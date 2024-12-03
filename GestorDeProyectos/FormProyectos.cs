@@ -17,10 +17,9 @@ namespace GestorDeProyectos
     {
         String nomProyecto;
         String tarea;
-        String subtarea;
-        private List<string> tareas = new List<string>();
-        private List<string> subtareas = new List<string>();
         private List<string> usuariosSeleccionados = new List<string>();
+        private List<Tareas> tareas = new List<Tareas>();
+        private List<string> subtareas = new List<string>();
 
         public FormProyectos()
         {
@@ -63,15 +62,27 @@ namespace GestorDeProyectos
 
         private void buttonAgregarTarea_Click(object sender, EventArgs e)
         {
-            string tarea = textBoxTarea.Text; 
+            string nombreTarea = textBoxTarea.Text;
 
-            if (!string.IsNullOrWhiteSpace(tarea)) 
+            if (!string.IsNullOrWhiteSpace(nombreTarea))
             {
-                tareas.Add(tarea); 
-                ListViewItem item = new ListViewItem(tarea);
+                // Verificar si la tarea ya existe
+                if (tareas.Any(t => t.NombreTarea.Equals(nombreTarea, StringComparison.OrdinalIgnoreCase)))
+                {
+                    MessageBox.Show("La tarea ya existe. Por favor, ingresa un nombre diferente.");
+                    return;
+                }
+
+                Tareas crearTarea = new Tareas
+                {
+                    NombreTarea = nombreTarea,
+                };
+
+                tareas.Add(crearTarea);
+                ListViewItem item = new ListViewItem(nombreTarea);
                 listViewTareas.Items.Add(item);
                 listViewTareas.View = View.List;
-                comboBoxTareas.Items.Add(item.Text);
+                comboBoxTareas.Items.Add(crearTarea.NombreTarea);
                 textBoxTarea.Clear();
             }
             else
@@ -82,12 +93,19 @@ namespace GestorDeProyectos
 
         private void buttonAgregarSubtarea_Click(object sender, EventArgs e)
         {
-            string subtarea = textBoxSubtarea.Text; 
+            string nombreSubtarea = textBoxSubtarea.Text;
 
-            if (!string.IsNullOrWhiteSpace(subtarea)) 
+            if (!string.IsNullOrWhiteSpace(nombreSubtarea))
             {
-                subtareas.Add(subtarea);
-                ListViewItem item = new ListViewItem(subtarea);
+                // Verificar si la subtarea ya existe
+                if (subtareas.Any(s => s.Equals(nombreSubtarea, StringComparison.OrdinalIgnoreCase)))
+                {
+                    MessageBox.Show("La subtarea ya existe. Por favor, ingresa un nombre diferente.");
+                    return;
+                }
+
+                subtareas.Add(nombreSubtarea);
+                ListViewItem item = new ListViewItem(nombreSubtarea);
                 listViewSubtareas.Items.Add(item);
                 listViewSubtareas.View = View.List;
                 textBoxSubtarea.Clear();
@@ -97,6 +115,53 @@ namespace GestorDeProyectos
                 MessageBox.Show("Por favor, ingresa una subtarea.");
             }
         }
+
+        private void buttonComfirmarSubtareas_Click(object sender, EventArgs e)
+        {
+            
+            if (comboBoxTareas.SelectedItem != null)
+            {
+                string tareaSeleccionada = comboBoxTareas.SelectedItem.ToString();
+                var tareaEncontrada = tareas.FirstOrDefault(t => t.NombreTarea.Equals(tareaSeleccionada, StringComparison.OrdinalIgnoreCase));
+
+                if (tareaEncontrada != null)
+                {
+                    // Verificar si las subtareas ya están asociadas a la tarea
+                    if (tareaEncontrada.Subtareas == null)
+                    {
+                        tareaEncontrada.Subtareas = new List<string>();
+                    }
+
+                    foreach (var subtarea in subtareas)
+                    {
+                        if (tareaEncontrada.Subtareas.Any(s => s.Equals(subtarea, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            MessageBox.Show($"La subtarea '{subtarea}' ya está asociada a la tarea '{tareaSeleccionada}'.");
+                            subtareas.Clear();
+                            listViewSubtareas.Clear();
+                            return;
+                            
+                        }
+                    }
+
+
+                    
+                    tareaEncontrada.Subtareas.AddRange(subtareas);
+                    MessageBox.Show("Subtareas añadidas exitosamente.");
+                    listViewSubtareas.Clear();
+                    subtareas.Clear();
+                  
+                }
+            }
+            else
+            {
+                MessageBox.Show("Por favor, selecciona una tarea.");
+            }
+        }
+
+
+
+
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -111,7 +176,7 @@ namespace GestorDeProyectos
             {
                 if (crearJson(nombreProyecto))
                 {
-                    MessageBox.Show("Usuario creado exitosamente.");
+                    MessageBox.Show("Proyecto creado exitosamente.");
                     this.Hide();
                     Form1 nuevoForm = new Form1();
                     nuevoForm.ShowDialog();
@@ -132,7 +197,7 @@ namespace GestorDeProyectos
             string json = File.ReadAllText(rutaArchivo);
             var proyectos = JsonConvert.DeserializeObject<List<Proyecto>>(json) ?? new List<Proyecto>();
 
-            
+
             if (proyectos.Any(u => u.NombreProyecto == nombreProyecto))
             {
                 MessageBox.Show("El proyecto ya existe.");
@@ -142,25 +207,25 @@ namespace GestorDeProyectos
             foreach (var item in listBoxUsuarios.SelectedItems)
             {
                 usuariosSeleccionados.Add(item.ToString());
-            }                                                                                                                                                      
+            }
 
-            
+
             var nuevoProyecto = new Proyecto
             {
                 NombreProyecto = textBoxProyecto.Text,
                 Tareas = tareas,
-                Subtareas = subtareas,
                 FechaInicio = dateTimePickerDataInici.Value,
                 FechaFin = dateTimePickerDataFin.Value,
                 Usuarios = usuariosSeleccionados
             };
             proyectos.Add(nuevoProyecto);
 
-            
+
             File.WriteAllText(rutaArchivo, JsonConvert.SerializeObject(proyectos, Formatting.Indented));
 
-            return true; 
+            return true;
         }
+
 
     }
 }

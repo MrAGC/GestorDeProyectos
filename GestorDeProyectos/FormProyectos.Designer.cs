@@ -49,6 +49,7 @@
             this.buttonCrearProyecto = new System.Windows.Forms.Button();
             this.comboBoxTareas = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
+            this.buttonComfirmarSubtareas = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // listBoxUsuarios
@@ -232,11 +233,22 @@
             this.label9.TabIndex = 22;
             this.label9.Text = "Seleccionar Tarea";
             // 
+            // buttonComfirmarSubtareas
+            // 
+            this.buttonComfirmarSubtareas.Location = new System.Drawing.Point(408, 360);
+            this.buttonComfirmarSubtareas.Name = "buttonComfirmarSubtareas";
+            this.buttonComfirmarSubtareas.Size = new System.Drawing.Size(75, 23);
+            this.buttonComfirmarSubtareas.TabIndex = 23;
+            this.buttonComfirmarSubtareas.Text = "Comfirmar";
+            this.buttonComfirmarSubtareas.UseVisualStyleBackColor = true;
+            this.buttonComfirmarSubtareas.Click += new System.EventHandler(this.buttonComfirmarSubtareas_Click);
+            // 
             // FormProyectos
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(700, 433);
+            this.Controls.Add(this.buttonComfirmarSubtareas);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.comboBoxTareas);
             this.Controls.Add(this.buttonCrearProyecto);
@@ -288,5 +300,6 @@
         private System.Windows.Forms.Button buttonCrearProyecto;
         private System.Windows.Forms.ComboBox comboBoxTareas;
         private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.Button buttonComfirmarSubtareas;
     }
 }
