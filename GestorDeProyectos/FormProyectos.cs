@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,21 +38,32 @@ namespace GestorDeProyectos
         private void CargarUsuarios()
         {
             string rutaArchivo = "usuarios.json"; // Ruta del archivo JSON
+            const string claveEncriptacion = "1234567812345678"; // Clave de encriptación
 
-            // Verificar si el archivo JSON existe
+            // Verificar si el archivo existe
             if (File.Exists(rutaArchivo))
             {
-                // Leer el contenido del archivo JSON
-                string json = File.ReadAllText(rutaArchivo);
-                var usuarios = JsonConvert.DeserializeObject<List<Usuario>>(json) ?? new List<Usuario>();
-
-                // Limpiar el ListBox antes de agregar usuarios
-                listBoxUsuarios.Items.Clear();
-
-                // Agregar solo los nombres de los usuarios al ListBox
-                foreach (var usuario in usuarios)
+                try
                 {
-                    listBoxUsuarios.Items.Add(usuario.NombreUsuario);
+                    // Leer y desencriptar el contenido del archivo
+                    string contenidoEncriptado = File.ReadAllText(rutaArchivo);
+                    string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado, claveEncriptacion);
+
+                    // Deserializar los datos a la lista de usuarios
+                    var usuarios = JsonConvert.DeserializeObject<List<Usuario>>(contenidoDesencriptado) ?? new List<Usuario>();
+
+                    // Limpiar el ListBox antes de agregar usuarios
+                    listBoxUsuarios.Items.Clear();
+
+                    // Agregar solo los nombres de los usuarios al ListBox
+                    foreach (var usuario in usuarios)
+                    {
+                        listBoxUsuarios.Items.Add(usuario.NombreUsuario);
+                    }
+                }
+                catch
+                {
+                    MessageBox.Show("El archivo de usuarios no se puede desencriptar o está dañado.");
                 }
             }
             else
@@ -59,6 +71,7 @@ namespace GestorDeProyectos
                 MessageBox.Show("No hay usuarios registrados.");
             }
         }
+
 
         private void buttonAgregarTarea_Click(object sender, EventArgs e)
         {
@@ -185,30 +198,95 @@ namespace GestorDeProyectos
             }
         }
 
+        private string EncriptarJson(string textoPlano, string clave)
+        {
+            using (Aes aes = Aes.Create())
+            {
+                aes.Key = Encoding.UTF8.GetBytes(clave.PadRight(32).Substring(0, 32)); // Clave de 256 bits
+                aes.IV = Encoding.UTF8.GetBytes("1234567812345678"); // Vector de inicialización de 128 bits
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                    {
+                        using (var writer = new StreamWriter(cryptoStream))
+                        {
+                            writer.Write(textoPlano);
+                        }
+                    }
+                    return Convert.ToBase64String(memoryStream.ToArray());
+                }
+            }
+        }
+
+        private string DesencriptarJson(string textoEncriptado, string clave)
+        {
+            using (Aes aes = Aes.Create())
+            {
+                aes.Key = Encoding.UTF8.GetBytes(clave.PadRight(32).Substring(0, 32)); // Clave de 256 bits
+                aes.IV = Encoding.UTF8.GetBytes("1234567812345678"); // Vector de inicialización de 128 bits
+
+                byte[] buffer = Convert.FromBase64String(textoEncriptado);
+                using (var memoryStream = new MemoryStream(buffer))
+                {
+                    using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateDecryptor(), CryptoStreamMode.Read))
+                    {
+                        using (var reader = new StreamReader(cryptoStream))
+                        {
+                            return reader.ReadToEnd();
+                        }
+                    }
+                }
+            }
+        }
+
+
         private bool crearJson(string nombreProyecto)
         {
             string rutaArchivo = "proyecto.json";
+            const string claveEncriptacion = "1234567812345678";
 
-            if (!File.Exists(rutaArchivo))
+            List<Proyecto> proyectos;
+
+            // Verificar si el archivo existe y desencriptarlo
+            if (File.Exists(rutaArchivo))
             {
-                File.WriteAllText(rutaArchivo, "[]");
+                string contenidoEncriptado = File.ReadAllText(rutaArchivo);
+                if (!string.IsNullOrWhiteSpace(contenidoEncriptado))
+                {
+                    try
+                    {
+                        string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado, claveEncriptacion);
+                        proyectos = JsonConvert.DeserializeObject<List<Proyecto>>(contenidoDesencriptado) ?? new List<Proyecto>();
+                    }
+                    catch
+                    {
+                        MessageBox.Show("El archivo JSON está dañado o no se puede desencriptar.");
+                        return false;
+                    }
+                }
+                else
+                {
+                    proyectos = new List<Proyecto>();
+                }
+            }
+            else
+            {
+                proyectos = new List<Proyecto>();
             }
 
-            string json = File.ReadAllText(rutaArchivo);
-            var proyectos = JsonConvert.DeserializeObject<List<Proyecto>>(json) ?? new List<Proyecto>();
-
-
+            // Verificar si el proyecto ya existe
             if (proyectos.Any(u => u.NombreProyecto == nombreProyecto))
             {
                 MessageBox.Show("El proyecto ya existe.");
                 return false;
             }
 
+            // Recopilar datos del nuevo proyecto
             foreach (var item in listBoxUsuarios.SelectedItems)
             {
                 usuariosSeleccionados.Add(item.ToString());
             }
-
 
             var nuevoProyecto = new Proyecto
             {
@@ -218,13 +296,17 @@ namespace GestorDeProyectos
                 FechaFin = dateTimePickerDataFin.Value,
                 Usuarios = usuariosSeleccionados
             };
+
             proyectos.Add(nuevoProyecto);
 
-
-            File.WriteAllText(rutaArchivo, JsonConvert.SerializeObject(proyectos, Formatting.Indented));
+            // Serializar y encriptar el JSON
+            string jsonSerializado = JsonConvert.SerializeObject(proyectos, Formatting.Indented);
+            string jsonEncriptado = EncriptarJson(jsonSerializado, claveEncriptacion);
+            File.WriteAllText(rutaArchivo, jsonEncriptado);
 
             return true;
         }
+
 
 
     }
