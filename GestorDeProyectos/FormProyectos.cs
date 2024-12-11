@@ -22,6 +22,9 @@ namespace GestorDeProyectos
         private List<Tareas> tareas = new List<Tareas>();
         private List<string> subtareas = new List<string>();
 
+        private static readonly string ClaveEncriptacion = "0123456789012345"; // Clave de 16 caracteres para AES
+        private static readonly byte[] IVPersonalizado = Encoding.UTF8.GetBytes("5432109876543210"); // IV invertido (16 bytes)
+
         public FormProyectos()
         {
             InitializeComponent();
@@ -38,7 +41,6 @@ namespace GestorDeProyectos
         private void CargarUsuarios()
         {
             string rutaArchivo = "usuarios.json"; // Ruta del archivo JSON
-            const string claveEncriptacion = "1234567812345678"; // Clave de encriptación
 
             // Verificar si el archivo existe
             if (File.Exists(rutaArchivo))
@@ -47,7 +49,7 @@ namespace GestorDeProyectos
                 {
                     // Leer y desencriptar el contenido del archivo
                     string contenidoEncriptado = File.ReadAllText(rutaArchivo);
-                    string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado, claveEncriptacion);
+                    string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado);
 
                     // Deserializar los datos a la lista de usuarios
                     var usuarios = JsonConvert.DeserializeObject<List<Usuario>>(contenidoDesencriptado) ?? new List<Usuario>();
@@ -71,7 +73,6 @@ namespace GestorDeProyectos
                 MessageBox.Show("No hay usuarios registrados.");
             }
         }
-
 
         private void buttonAgregarTarea_Click(object sender, EventArgs e)
         {
@@ -131,7 +132,6 @@ namespace GestorDeProyectos
 
         private void buttonComfirmarSubtareas_Click(object sender, EventArgs e)
         {
-            
             if (comboBoxTareas.SelectedItem != null)
             {
                 string tareaSeleccionada = comboBoxTareas.SelectedItem.ToString();
@@ -153,17 +153,13 @@ namespace GestorDeProyectos
                             subtareas.Clear();
                             listViewSubtareas.Clear();
                             return;
-                            
                         }
                     }
 
-
-                    
                     tareaEncontrada.Subtareas.AddRange(subtareas);
                     MessageBox.Show("Subtareas añadidas exitosamente.");
                     listViewSubtareas.Clear();
                     subtareas.Clear();
-                  
                 }
             }
             else
@@ -172,14 +168,9 @@ namespace GestorDeProyectos
             }
         }
 
-
-
-
-
         private void button1_Click(object sender, EventArgs e)
         {
             string nombreProyecto = textBoxProyecto.Text;
-            
 
             if (string.IsNullOrWhiteSpace(nombreProyecto))
             {
@@ -193,58 +184,68 @@ namespace GestorDeProyectos
                     this.Hide();
                     Form1 nuevoForm = new Form1();
                     nuevoForm.ShowDialog();
-
                 }
             }
         }
 
-        private string EncriptarJson(string textoPlano, string clave)
+        private string EncriptarJson(string json)
         {
-            using (Aes aes = Aes.Create())
+            using (Aes aesAlg = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(clave.PadRight(32).Substring(0, 32)); // Clave de 256 bits
-                aes.IV = Encoding.UTF8.GetBytes("1234567812345678"); // Vector de inicialización de 128 bits
+                aesAlg.Key = Encoding.UTF8.GetBytes(ClaveEncriptacion);
+                aesAlg.IV = IVPersonalizado;
 
-                using (var memoryStream = new MemoryStream())
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
                 {
-                    using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                    msEncrypt.Write(aesAlg.IV, 0, aesAlg.IV.Length);
+
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
                     {
-                        using (var writer = new StreamWriter(cryptoStream))
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
                         {
-                            writer.Write(textoPlano);
+                            swEncrypt.Write(json);
                         }
                     }
-                    return Convert.ToBase64String(memoryStream.ToArray());
+
+                    return Convert.ToBase64String(msEncrypt.ToArray());
                 }
             }
         }
 
-        private string DesencriptarJson(string textoEncriptado, string clave)
+        private string DesencriptarJson(string jsonEncriptado)
         {
-            using (Aes aes = Aes.Create())
+            using (Aes aesAlg = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(clave.PadRight(32).Substring(0, 32)); // Clave de 256 bits
-                aes.IV = Encoding.UTF8.GetBytes("1234567812345678"); // Vector de inicialización de 128 bits
+                aesAlg.Key = Encoding.UTF8.GetBytes(ClaveEncriptacion);
+                aesAlg.IV = IVPersonalizado;
 
-                byte[] buffer = Convert.FromBase64String(textoEncriptado);
-                using (var memoryStream = new MemoryStream(buffer))
+                byte[] datosEncriptados = Convert.FromBase64String(jsonEncriptado);
+
+                byte[] iv = new byte[16];
+                Array.Copy(datosEncriptados, 0, iv, 0, iv.Length);
+
+                aesAlg.IV = iv;
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msDecrypt = new MemoryStream(datosEncriptados, 16, datosEncriptados.Length - 16))
                 {
-                    using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateDecryptor(), CryptoStreamMode.Read))
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
                     {
-                        using (var reader = new StreamReader(cryptoStream))
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
                         {
-                            return reader.ReadToEnd();
+                            return srDecrypt.ReadToEnd();
                         }
                     }
                 }
             }
         }
-
 
         private bool crearJson(string nombreProyecto)
         {
             string rutaArchivo = "proyecto.json";
-            const string claveEncriptacion = "1234567812345678";
 
             List<Proyecto> proyectos;
 
@@ -256,7 +257,7 @@ namespace GestorDeProyectos
                 {
                     try
                     {
-                        string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado, claveEncriptacion);
+                        string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado);
                         proyectos = JsonConvert.DeserializeObject<List<Proyecto>>(contenidoDesencriptado) ?? new List<Proyecto>();
                     }
                     catch
@@ -301,14 +302,17 @@ namespace GestorDeProyectos
 
             // Serializar y encriptar el JSON
             string jsonSerializado = JsonConvert.SerializeObject(proyectos, Formatting.Indented);
-            string jsonEncriptado = EncriptarJson(jsonSerializado, claveEncriptacion);
+            string jsonEncriptado = EncriptarJson(jsonSerializado);
             File.WriteAllText(rutaArchivo, jsonEncriptado);
 
             return true;
         }
 
-
-
+        private void buttonCancelar_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            Form1 nuevoForm = new Form1();
+            nuevoForm.ShowDialog();
+        }
     }
 }
-

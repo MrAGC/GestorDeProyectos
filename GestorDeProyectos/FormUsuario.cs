@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 
@@ -18,23 +14,25 @@ namespace GestorDeProyectos
         Boolean desarrollador;
         string usuario;
         string contrasena;
+        private static readonly string ClaveEncriptacion = "0123456789012345"; // Clave de 16 caracteres para AES
+        private static readonly byte[] IVPersonalizado = Encoding.UTF8.GetBytes("5432109876543210"); // IV invertido (16 bytes)
+
         public FormUsuario()
         {
             InitializeComponent();
             this.FormClosing += FormProyectos_FormClosing;
             this.StartPosition = FormStartPosition.CenterScreen;
         }
+
         private void FormProyectos_FormClosing(object sender, FormClosingEventArgs e)
         {
             Application.Exit();
         }
 
-
-
         private void buttonCrearUsuario_Click(object sender, EventArgs e)
         {
-            usuario = textBoxUsuario.Text; // Suponiendo que tienes un TextBox llamado txtUsuario
-            contrasena = textBoxContraseña.Text; // Suponiendo que tienes un TextBox llamado txtContrasena
+            usuario = textBoxUsuario.Text;
+            contrasena = textBoxContraseña.Text;
             if (string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(contrasena))
             {
                 MessageBox.Show("Los campos estan vacios, rellenelos antes de aceptar.", "Campo requerido", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -47,62 +45,70 @@ namespace GestorDeProyectos
                     this.Hide();
                     Form1 nuevoForm = new Form1();
                     nuevoForm.ShowDialog();
-                    
                 }
             }
         }
 
-        private string EncriptarJson(string textoPlano, string clave)
+        private string EncriptarJson(string json)
         {
-            using (Aes aes = Aes.Create())
+            using (Aes aesAlg = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(clave.PadRight(32).Substring(0, 32)); // Clave de 256 bits
-                aes.IV = Encoding.UTF8.GetBytes("1234567812345678"); // Vector de inicialización de 128 bits
+                aesAlg.Key = Encoding.UTF8.GetBytes(ClaveEncriptacion);
+                aesAlg.IV = IVPersonalizado;
 
-                using (var memoryStream = new MemoryStream())
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
                 {
-                    using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                    msEncrypt.Write(aesAlg.IV, 0, aesAlg.IV.Length);
+
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
                     {
-                        using (var writer = new StreamWriter(cryptoStream))
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
                         {
-                            writer.Write(textoPlano);
+                            swEncrypt.Write(json);
                         }
                     }
-                    return Convert.ToBase64String(memoryStream.ToArray());
+
+                    return Convert.ToBase64String(msEncrypt.ToArray());
                 }
             }
         }
 
-        private string DesencriptarJson(string textoEncriptado, string clave)
+        private string DesencriptarJson(string jsonEncriptado)
         {
-            using (Aes aes = Aes.Create())
+            using (Aes aesAlg = Aes.Create())
             {
-                aes.Key = Encoding.UTF8.GetBytes(clave.PadRight(32).Substring(0, 32)); // Clave de 256 bits
-                aes.IV = Encoding.UTF8.GetBytes("1234567812345678"); // Vector de inicialización de 128 bits
+                aesAlg.Key = Encoding.UTF8.GetBytes(ClaveEncriptacion);
+                aesAlg.IV = IVPersonalizado;
 
-                byte[] buffer = Convert.FromBase64String(textoEncriptado);
-                using (var memoryStream = new MemoryStream(buffer))
+                byte[] datosEncriptados = Convert.FromBase64String(jsonEncriptado);
+
+                byte[] iv = new byte[16];
+                Array.Copy(datosEncriptados, 0, iv, 0, iv.Length);
+
+                aesAlg.IV = iv;
+
+                ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msDecrypt = new MemoryStream(datosEncriptados, 16, datosEncriptados.Length - 16))
                 {
-                    using (var cryptoStream = new CryptoStream(memoryStream, aes.CreateDecryptor(), CryptoStreamMode.Read))
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
                     {
-                        using (var reader = new StreamReader(cryptoStream))
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
                         {
-                            return reader.ReadToEnd();
+                            return srDecrypt.ReadToEnd();
                         }
                     }
                 }
             }
         }
-
 
         private bool crearJson(string usuario, string contrasena)
         {
-            string rutaArchivo = "usuarios.json"; // Ruta del archivo JSON
-            const string claveEncriptacion = "1234567812345678"; // Clave de encriptación
-
+            string rutaArchivo = "usuarios.json";
             List<Usuario> usuarios;
 
-            // Verificar si el archivo existe y desencriptarlo
             if (File.Exists(rutaArchivo))
             {
                 string contenidoEncriptado = File.ReadAllText(rutaArchivo);
@@ -110,7 +116,7 @@ namespace GestorDeProyectos
                 {
                     try
                     {
-                        string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado, claveEncriptacion);
+                        string contenidoDesencriptado = DesencriptarJson(contenidoEncriptado);
                         usuarios = JsonConvert.DeserializeObject<List<Usuario>>(contenidoDesencriptado) ?? new List<Usuario>();
                     }
                     catch
@@ -129,49 +135,42 @@ namespace GestorDeProyectos
                 usuarios = new List<Usuario>();
             }
 
-            // Verificar si el usuario ya existe
             if (usuarios.Any(u => u.NombreUsuario == usuario))
             {
                 MessageBox.Show("El usuario ya existe.");
-                return false; // El usuario ya existe
+                return false;
             }
 
-            // Crear un nuevo usuario y agregarlo a la lista
             var nuevoUsuario = new Usuario
             {
                 NombreUsuario = textBoxUsuario.Text,
                 Contraseña = textBoxContraseña.Text,
-                EsDesarrolador = desarrollador // Asignar el valor de "desarrollador"
+                EsDesarrolador = desarrollador
             };
             usuarios.Add(nuevoUsuario);
 
-            // Serializar y encriptar la lista actualizada
             string jsonSerializado = JsonConvert.SerializeObject(usuarios, Formatting.Indented);
-            string jsonEncriptado = EncriptarJson(jsonSerializado, claveEncriptacion);
+            string jsonEncriptado = EncriptarJson(jsonSerializado);
             File.WriteAllText(rutaArchivo, jsonEncriptado);
 
-            return true; // Usuario creado exitosamente
+            return true;
         }
-
-
-        // Clase para representar a un usuario
-
 
         private void checkBoxDesarrollador_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkBoxDesarrollador.Checked == true)
-            {
-                desarrollador = true;
-            }
-            else 
-            {
-                desarrollador = false;
-            }
+            desarrollador = checkBoxDesarrollador.Checked;
         }
 
         private void FormUsuario_Load(object sender, EventArgs e)
         {
             this.textBoxContraseña.UseSystemPasswordChar = true;
+        }
+
+        private void buttonCancelar_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            Form1 nuevoForm = new Form1();
+            nuevoForm.ShowDialog();
         }
     }
 }

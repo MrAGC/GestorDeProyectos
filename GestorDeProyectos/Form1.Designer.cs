@@ -38,7 +38,8 @@
             this.comboBoxElegir.FormattingEnabled = true;
             this.comboBoxElegir.Items.AddRange(new object[] {
             "Gestionar Usuarios",
-            "Gestionar Proyecto"});
+            "Gestionar Proyecto",
+            "Ver JSON"});
             this.comboBoxElegir.Location = new System.Drawing.Point(80, 35);
             this.comboBoxElegir.Name = "comboBoxElegir";
             this.comboBoxElegir.Size = new System.Drawing.Size(184, 21);

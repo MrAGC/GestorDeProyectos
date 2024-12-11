@@ -34,6 +34,7 @@
             this.textBoxContraseña = new System.Windows.Forms.TextBox();
             this.checkBoxDesarrollador = new System.Windows.Forms.CheckBox();
             this.buttonCrearUsuario = new System.Windows.Forms.Button();
+            this.buttonCancelar = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // label1
@@ -81,7 +82,7 @@
             // 
             // buttonCrearUsuario
             // 
-            this.buttonCrearUsuario.Location = new System.Drawing.Point(151, 178);
+            this.buttonCrearUsuario.Location = new System.Drawing.Point(118, 181);
             this.buttonCrearUsuario.Name = "buttonCrearUsuario";
             this.buttonCrearUsuario.Size = new System.Drawing.Size(75, 23);
             this.buttonCrearUsuario.TabIndex = 6;
@@ -89,11 +90,22 @@
             this.buttonCrearUsuario.UseVisualStyleBackColor = true;
             this.buttonCrearUsuario.Click += new System.EventHandler(this.buttonCrearUsuario_Click);
             // 
+            // buttonCancelar
+            // 
+            this.buttonCancelar.Location = new System.Drawing.Point(200, 181);
+            this.buttonCancelar.Name = "buttonCancelar";
+            this.buttonCancelar.Size = new System.Drawing.Size(75, 23);
+            this.buttonCancelar.TabIndex = 7;
+            this.buttonCancelar.Text = "Cancelar";
+            this.buttonCancelar.UseVisualStyleBackColor = true;
+            this.buttonCancelar.Click += new System.EventHandler(this.buttonCancelar_Click);
+            // 
             // FormUsuario
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(400, 284);
+            this.Controls.Add(this.buttonCancelar);
             this.Controls.Add(this.buttonCrearUsuario);
             this.Controls.Add(this.checkBoxDesarrollador);
             this.Controls.Add(this.textBoxContraseña);
@@ -116,5 +128,6 @@
         private System.Windows.Forms.TextBox textBoxContraseña;
         private System.Windows.Forms.CheckBox checkBoxDesarrollador;
         private System.Windows.Forms.Button buttonCrearUsuario;
+        private System.Windows.Forms.Button buttonCancelar;
     }
 }

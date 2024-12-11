@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.ConstrainedExecution;
 using System.Runtime.Hosting;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,6 +33,12 @@ namespace GestorDeProyectos
             {
                 this.Hide();
                 FormProyectos nuevoForm = new FormProyectos();
+                nuevoForm.ShowDialog();
+            }
+            else if (opcionComboBox == "Ver JSON")
+            {
+                this.Hide();
+                FormVerJson nuevoForm = new FormVerJson();
                 nuevoForm.ShowDialog();
             }
             else 

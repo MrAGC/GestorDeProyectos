@@ -50,6 +50,7 @@
             this.comboBoxTareas = new System.Windows.Forms.ComboBox();
             this.label9 = new System.Windows.Forms.Label();
             this.buttonComfirmarSubtareas = new System.Windows.Forms.Button();
+            this.buttonCancelar = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // listBoxUsuarios
@@ -208,7 +209,7 @@
             // 
             // buttonCrearProyecto
             // 
-            this.buttonCrearProyecto.Location = new System.Drawing.Point(205, 375);
+            this.buttonCrearProyecto.Location = new System.Drawing.Point(457, 384);
             this.buttonCrearProyecto.Name = "buttonCrearProyecto";
             this.buttonCrearProyecto.Size = new System.Drawing.Size(113, 37);
             this.buttonCrearProyecto.TabIndex = 20;
@@ -235,7 +236,7 @@
             // 
             // buttonComfirmarSubtareas
             // 
-            this.buttonComfirmarSubtareas.Location = new System.Drawing.Point(408, 360);
+            this.buttonComfirmarSubtareas.Location = new System.Drawing.Point(248, 360);
             this.buttonComfirmarSubtareas.Name = "buttonComfirmarSubtareas";
             this.buttonComfirmarSubtareas.Size = new System.Drawing.Size(75, 23);
             this.buttonComfirmarSubtareas.TabIndex = 23;
@@ -243,11 +244,22 @@
             this.buttonComfirmarSubtareas.UseVisualStyleBackColor = true;
             this.buttonComfirmarSubtareas.Click += new System.EventHandler(this.buttonComfirmarSubtareas_Click);
             // 
+            // buttonCancelar
+            // 
+            this.buttonCancelar.Location = new System.Drawing.Point(576, 384);
+            this.buttonCancelar.Name = "buttonCancelar";
+            this.buttonCancelar.Size = new System.Drawing.Size(113, 37);
+            this.buttonCancelar.TabIndex = 24;
+            this.buttonCancelar.Text = "Cancelar";
+            this.buttonCancelar.UseVisualStyleBackColor = true;
+            this.buttonCancelar.Click += new System.EventHandler(this.buttonCancelar_Click);
+            // 
             // FormProyectos
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(700, 433);
+            this.Controls.Add(this.buttonCancelar);
             this.Controls.Add(this.buttonComfirmarSubtareas);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.comboBoxTareas);
@@ -301,5 +313,6 @@
         private System.Windows.Forms.ComboBox comboBoxTareas;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.Button buttonComfirmarSubtareas;
+        private System.Windows.Forms.Button buttonCancelar;
     }
 }
