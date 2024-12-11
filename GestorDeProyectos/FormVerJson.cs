@@ -15,10 +15,19 @@ namespace GestorDeProyectos
     {
         private static readonly string ClaveEncriptacion = "0123456789012345"; // Clave de 16 caracteres para AES
         private static readonly byte[] IVPersonalizado = Encoding.UTF8.GetBytes("5432109876543210"); // IV invertido (16 bytes)
+        private string rutaArchivo;
+        private bool archivoEncriptado;
 
         public FormVerJson()
         {
             InitializeComponent();
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.FormClosing += FormProyectos_FormClosing;
+        }
+
+        private void FormProyectos_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Application.Exit();
         }
 
         private void buttonSeleccionarJson_Click(object sender, EventArgs e)
@@ -31,35 +40,47 @@ namespace GestorDeProyectos
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                string rutaArchivo = openFileDialog.FileName;
+                rutaArchivo = openFileDialog.FileName;
                 string contenidoArchivo = File.ReadAllText(rutaArchivo);
                 string contenidoJson;
 
                 try
                 {
                     contenidoJson = DesencriptarJson(contenidoArchivo);
+                    archivoEncriptado = true;
                 }
                 catch
                 {
                     contenidoJson = contenidoArchivo; // Si falla la desencriptación, asumimos que no está encriptado
+                    archivoEncriptado = false;
                 }
 
-                // Convert JSON object to array format
-                var jsonObject = JsonConvert.DeserializeObject<JObject>(contenidoJson);
-                var flattenedJson = FlattenJson(jsonObject);
-                var jsonArray = new JArray { flattenedJson };
-
-                var dataTable = JsonConvert.DeserializeObject<DataTable>(jsonArray.ToString());
-                dataGridViewVerJson.DataSource = dataTable;
+                // Verificar si el contenido JSON es un array o un objeto
+                JToken jsonToken = JToken.Parse(contenidoJson);
+                if (jsonToken is JArray)
+                {
+                    var jsonArray = (JArray)jsonToken;
+                    var flattenedJson = jsonArray.Select(obj => FlattenJson(obj)).ToList();
+                    var dataTable = JsonConvert.DeserializeObject<DataTable>(JsonConvert.SerializeObject(flattenedJson));
+                    dataGridViewVerJson.DataSource = dataTable;
+                }
+                else if (jsonToken is JObject)
+                {
+                    var jsonObject = (JObject)jsonToken;
+                    var flattenedJson = FlattenJson(jsonObject);
+                    var jsonArray = new JArray { flattenedJson };
+                    var dataTable = JsonConvert.DeserializeObject<DataTable>(jsonArray.ToString());
+                    dataGridViewVerJson.DataSource = dataTable;
+                }
                 dataGridViewVerJson.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             }
         }
 
-        private JObject FlattenJson(JObject jsonObject)
+        private JObject FlattenJson(JToken jsonToken)
         {
             var result = new JObject();
 
-            foreach (var property in jsonObject.Properties())
+            foreach (var property in jsonToken.Children<JProperty>())
             {
                 if (property.Value is JObject nestedObject)
                 {
@@ -76,9 +97,6 @@ namespace GestorDeProyectos
 
             return result;
         }
-
-
-
 
         private string DesencriptarJson(string jsonEncriptado)
         {
@@ -109,8 +127,64 @@ namespace GestorDeProyectos
             }
         }
 
+        private string EncriptarJson(string json)
+        {
+            using (Aes aesAlg = Aes.Create())
+            {
+                aesAlg.Key = Encoding.UTF8.GetBytes(ClaveEncriptacion);
+                aesAlg.IV = IVPersonalizado;
+
+                ICryptoTransform encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+                using (MemoryStream msEncrypt = new MemoryStream())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                        {
+                            swEncrypt.Write(json);
+                        }
+                    }
+
+                    byte[] iv = aesAlg.IV;
+                    byte[] encrypted = msEncrypt.ToArray();
+
+                    byte[] result = new byte[iv.Length + encrypted.Length];
+                    Array.Copy(iv, 0, result, 0, iv.Length);
+                    Array.Copy(encrypted, 0, result, iv.Length, encrypted.Length);
+
+                    return Convert.ToBase64String(result);
+                }
+            }
+        }
+
+        private void buttonEliminarFila_Click(object sender, EventArgs e)
+        {
+            if (dataGridViewVerJson.SelectedRows.Count > 0)
+            {
+                foreach (DataGridViewRow row in dataGridViewVerJson.SelectedRows)
+                {
+                    dataGridViewVerJson.Rows.Remove(row);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Seleccione una fila para eliminar.", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         private void buttonSalir_Click(object sender, EventArgs e)
         {
+            DataTable dataTable = (DataTable)dataGridViewVerJson.DataSource;
+            string json = JsonConvert.SerializeObject(dataTable);
+
+            if (archivoEncriptado)
+            {
+                json = EncriptarJson(json);
+            }
+
+            File.WriteAllText(rutaArchivo, json);
+
             this.Hide();
             Form1 nuevoForm = new Form1();
             nuevoForm.ShowDialog();
