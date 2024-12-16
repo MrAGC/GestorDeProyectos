@@ -60,8 +60,6 @@ namespace GestorDeProyectos
 
                 using (MemoryStream msEncrypt = new MemoryStream())
                 {
-                    msEncrypt.Write(aesAlg.IV, 0, aesAlg.IV.Length);
-
                     using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
                     {
                         using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
@@ -70,10 +68,12 @@ namespace GestorDeProyectos
                         }
                     }
 
-                    return Convert.ToBase64String(msEncrypt.ToArray());
+                    byte[] encrypted = msEncrypt.ToArray();
+                    return Convert.ToBase64String(encrypted);
                 }
             }
         }
+
 
         private string DesencriptarJson(string jsonEncriptado)
         {
@@ -84,14 +84,9 @@ namespace GestorDeProyectos
 
                 byte[] datosEncriptados = Convert.FromBase64String(jsonEncriptado);
 
-                byte[] iv = new byte[16];
-                Array.Copy(datosEncriptados, 0, iv, 0, iv.Length);
-
-                aesAlg.IV = iv;
-
                 ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
 
-                using (MemoryStream msDecrypt = new MemoryStream(datosEncriptados, 16, datosEncriptados.Length - 16))
+                using (MemoryStream msDecrypt = new MemoryStream(datosEncriptados))
                 {
                     using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
                     {
